@@ -1,0 +1,6 @@
+{
+  "appId": "com.songhubdownloads.songbook",
+  "appName": "SongBook for SungHub",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
