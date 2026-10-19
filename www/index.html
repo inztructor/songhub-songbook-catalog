@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SongBook for SungHub</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--desk:#d9dde6;--paper:#fbfbf8;--ink:#1b2233;--mute:#667089;--acc:#1f6f6b;--line:#e3e6ee;--bar:#f4f6fa;--hl:#ffe9a8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--desk:#0f141e;--paper:#1a2130;--ink:#e6eaf2;--mute:#9aa5bd;--acc:#5fc2b8;--line:#2a3347;--bar:#151b28;--hl:#4a4020}}
+:root[data-theme="dark"]{--desk:#0f141e;--paper:#1a2130;--ink:#e6eaf2;--mute:#9aa5bd;--acc:#5fc2b8;--line:#2a3347;--bar:#151b28;--hl:#4a4020}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--desk);color:var(--ink);font:15px system-ui,sans-serif;display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+header{background:var(--bar);border-bottom:1px solid var(--line);padding:8px 10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:relative}
+h1{font:700 18px Georgia,serif;line-height:1.15;margin:0 6px 0 0;order:1;flex:1}h1 small{display:block;font:400 11px system-ui,sans-serif;color:var(--mute);margin-top:2px}
+button,select,input,label.b{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+button,label.b{cursor:pointer}button:disabled{opacity:.4;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--acc)}
+.pri{background:var(--acc);color:var(--paper);border-color:var(--acc)}
+#pno{width:64px;text-align:center}#sq{order:3;flex:1 1 100%;min-width:0}header label.b{order:2}#sel{order:4;flex:1 1 0;min-width:0}.zc{order:5;display:flex;gap:4px}@media(min-width:760px){#sq{order:2;flex:1 1 260px}header label.b{order:3}#sel{order:4;flex:0 0 auto}h1{flex:0 0 auto}}
+#res{position:absolute;left:10px;right:10px;top:100%;z-index:5;background:var(--paper);border:1px solid var(--line);border-radius:8px;max-height:60vh;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.sr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}.sr b{overflow-wrap:anywhere}.sr span{color:var(--mute);font-size:.9em}.sr span:last-child{text-align:right}
+.sr:hover{background:var(--hl)}.sr i{color:var(--mute);font-style:normal;text-align:right}
+#add{display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px;background:var(--bar);border-bottom:1px solid var(--line)}
+#add input{flex:1;min-width:120px}
+#sc{flex:1;overflow:auto;padding:8px;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}
+#pg{margin:0 auto;max-width:1000px;background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:.6em 1em;column-count:1;column-gap:2.4em;box-shadow:0 6px 22px rgba(0,0,0,.18)}@media(min-width:760px){#pg{column-count:2;padding:1.6em}}
+.r{display:grid;grid-template-columns:1fr auto;grid-template-areas:"t n" "a n";gap:0 .8em;padding:.45em .2em;border-bottom:1px solid var(--line);break-inside:avoid;line-height:1.35}
+.r b{grid-area:t;font-weight:600;overflow-wrap:anywhere}.r span{grid-area:a;color:var(--mute);font-size:.88em;overflow-wrap:anywhere}
+.r em{grid-area:n;align-self:center;font-style:normal;color:var(--acc);font-variant-numeric:tabular-nums;font-weight:600}@media(min-width:760px){.r{grid-template-columns:1.5fr 1fr 3.6em;grid-template-areas:"t a n";padding:.12em .2em;border-bottom:1px dotted var(--line)}.r b,.r span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.r span{font-size:1em}.r em{text-align:right;font-weight:400}}
+.hl{background:var(--hl)}.empty{padding:16px;color:var(--mute)}
+@keyframes fn{from{transform:perspective(1400px) rotateY(-65deg);transform-origin:left center;opacity:.2}to{transform:none;opacity:1}}
+@keyframes fp{from{transform:perspective(1400px) rotateY(65deg);transform-origin:right center;opacity:.2}to{transform:none;opacity:1}}
+.fn{animation:fn .4s ease-out}.fp{animation:fp .4s ease-out}
+@media (prefers-reduced-motion:reduce){.fn,.fp{animation:none}}
+#nav{display:flex;gap:8px;align-items:center;justify-content:center;padding:8px 10px;background:var(--bar);border-top:1px solid var(--line)}#nav button{min-width:54px;min-height:44px;font-size:22px}#nav #pno{min-height:44px;width:78px;padding:6px 4px;text-align:center;-moz-appearance:textfield}#pno::-webkit-inner-spin-button,#pno::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}#nav #editb{font-size:15px;min-width:72px;margin-left:6px}
+#pg.editing{outline:2px dashed var(--acc);outline-offset:3px}#pg.editing .r{cursor:pointer}#pg.editing .r:hover{background:var(--hl)}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}.card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px}.card h2{margin:0;font:700 18px Georgia,serif}.bt{display:flex;gap:8px;flex-wrap:wrap}.bt button{flex:1 1 90px;min-height:44px}.dng{color:#c0392b;border-color:#c0392b}footer{padding:4px 12px;font-size:12px;color:var(--mute);background:var(--bar)}button,select,input,label.b{font-size:16px}header button,header select,header label.b,header input{min-height:40px}
+[hidden]{display:none!important}
+</style></head><body>
+<header>
+<h1>SongBook for SungHub<small>by <span id="cr">HungryMeTutorials</span></small></h1>
+
+
+
+<select id="sel" aria-label="Jump to letter"></select>
+<span class="zc"><button id="zo" aria-label="Zoom out">−</button><button id="zl" aria-label="Reset zoom">100%</button><button id="zi" aria-label="Zoom in">+</button></span>
+<input id="sq" type="search" placeholder="Search title, artist or number">
+<label class="b pri">Import XLS<input id="file" type="file" accept=".xls,.xlsx,.csv" hidden></label>
+<div id="res" hidden></div>
+</header>
+<div id="add" hidden>
+<input id="nt" placeholder="Song title"><input id="na" placeholder="Artist"><input id="nn" placeholder="Number">
+<button id="addb" class="pri">Add song</button><button id="newp">Add new page</button><button id="delp" class="dng">Delete last page</button>
+</div>
+<div id="sc"><div id="pg"></div></div>
+<nav id="nav"><button id="prev" aria-label="Previous page">‹</button><input id="pno" type="number" min="1" inputmode="numeric" aria-label="Page number"><span id="tot"></span><button id="next" aria-label="Next page">›</button><button id="editb">✎ Edit</button></nav>
+<footer id="info"></footer>
+<div id="dlg" hidden><div class="card"><h2>Edit song</h2><input id="et" placeholder="Song title"><input id="ea" placeholder="Artist"><input id="en" placeholder="Number"><div class="bt"><button id="es" class="pri">Save</button><button id="ed" class="dng">Delete song</button><button id="ec">Cancel</button></div></div></div>
+<script>
+const PER=96,$=s=>document.querySelector(s),col=new Intl.Collator('en',{numeric:true,sensitivity:'base'});
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let base=[],idx=[],custom=[[]],cur=0,z=1,hl=-1,gmap={},timer;
+const pg=$('#pg'),sc=$('#sc'),sel=$('#sel'),res=$('#res'),sq=$('#sq');
+function grp(t){const c=t.trim().charAt(0).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();return /[A-Z]/.test(c)?c:/[0-9]/.test(c)?'0-9':'#'}
+function prep(rows){const rk=g=>g==='#'?0:g==='0-9'?1:2;
+ const a=rows.map(r=>[r[0],r[1],r[2],grp(r[0])]);a.sort((x,y)=>rk(x[3])-rk(y[3])||col.compare(x[0],y[0]));
+ base=a;idx=a.map(r=>(r[0]+' '+r[1]+' '+r[2]).toLowerCase());gmap={};
+ a.forEach((r,i)=>{if(!(r[3] in gmap))gmap[r[3]]=Math.floor(i/PER)});
+ const order=['#','0-9',...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].filter(g=>g in gmap);
+ sel.innerHTML=order.map(g=>`<option value="${gmap[g]}">${g==='#'?'Symbols':g==='0-9'?'Numbers 0–9':g}</option>`).join('')+'<option value="last">Add songs (last page)</option>';}
+const bp=()=>Math.ceil(base.length/PER),tp=()=>bp()+custom.length;
+const rowsOf=()=>cur<bp()?base.slice(cur*PER,cur*PER+PER):custom[cur-bp()];
+const bs=()=>innerWidth<760?16:13;
+function zoomApply(){pg.style.fontSize=(bs()*z)+'px';$('#zl').textContent=Math.round(z*100)+'%'}
+function render(dir){const R=rowsOf(),isC=cur>=bp();
+ pg.innerHTML=R.length?R.map((r,i)=>`<div class="r${i===hl?' hl':''}" data-i="${i}"><b title="${esc(r[0])}">${esc(r[0])}</b><span>${esc(r[1])}</span><em>${esc(r[2])}</em></div>`).join(''):'<p class="empty">This page is empty. Add a song above.</p>';
+ $('#add').hidden=!isC;$('#pno').value=cur+1;$('#tot').textContent='/ '+tp();
+ if(isC)sel.value='last';else if(R[0])sel.value=gmap[R[0][3]];
+ $('#prev').disabled=cur===0;$('#next').disabled=cur>=tp()-1;
+ $('#info').textContent=base.length.toLocaleString()+' songs · '+bp()+' pages · '+PER+' songs per page'+(custom.some(p=>p.length)?' · '+custom.reduce((n,p)=>n+p.length,0)+' added by you':'');
+ if(ed)$('#info').textContent='Edit mode: tap any song to change or delete it';
+ if(dir){pg.classList.remove('fn','fp');void pg.offsetWidth;pg.classList.add(dir>0?'fn':'fp')}
+ zoomApply();const h=pg.querySelector('.hl');if(h)h.scrollIntoView({block:'center'});else sc.scrollTop=0}
+function go(p,hi=-1){p=Math.max(0,Math.min(tp()-1,p));const d=p>cur?1:p<cur?-1:0;cur=p;hl=hi;render(d)}
+function fit(){z=1;zoomApply()}
+addEventListener('resize',zoomApply);
+let pd=0,sx=0,sy=0,pz=1,pn=false;const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+sc.addEventListener('touchstart',e=>{if(e.touches.length===2){pd=dist(e.touches);pz=z;pn=true}else if(e.touches.length===1){sx=e.touches[0].clientX;sy=e.touches[0].clientY}},{passive:true});
+sc.addEventListener('touchmove',e=>{if(e.touches.length===2&&pd){z=Math.max(.6,Math.min(3,pz*dist(e.touches)/pd));zoomApply()}},{passive:true});
+sc.addEventListener('touchend',e=>{if(e.touches.length)return;if(!pn){const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;if(Math.abs(dx)>80&&Math.abs(dy)<50)go(cur+(dx<0?1:-1))}pn=false;pd=0},{passive:true});
+$('#prev').onclick=()=>go(cur-1);$('#next').onclick=()=>go(cur+1);
+$('#pno').onchange=e=>go((parseInt(e.target.value)||1)-1);
+sel.onchange=()=>go(sel.value==='last'?tp()-1:+sel.value);
+$('#zi').onclick=()=>{z=Math.min(4,z*1.2);zoomApply()};$('#zo').onclick=()=>{z=Math.max(.3,z/1.2);zoomApply()};$('#zl').onclick=fit;
+sc.addEventListener('wheel',e=>{if(e.ctrlKey){e.preventDefault();z=Math.max(.3,Math.min(4,z*(e.deltaY<0?1.1:.9)));zoomApply()}},{passive:false});
+document.addEventListener('keydown',e=>{if(/INPUT|SELECT/.test(document.activeElement.tagName))return;if(e.key==='ArrowRight')go(cur+1);if(e.key==='ArrowLeft')go(cur-1)});
+function search(){const q=sq.value.trim().toLowerCase();if(!q){res.hidden=true;return}
+ const w=q.split(/\s+/),out=[];
+ for(let i=0;i<idx.length&&out.length<150;i++)if(w.every(x=>idx[i].includes(x)))out.push([base[i],Math.floor(i/PER),i%PER]);
+ custom.forEach((p,ci)=>p.forEach((r,ri)=>{if(out.length<200&&w.every(x=>(r[0]+' '+r[1]+' '+r[2]).toLowerCase().includes(x)))out.push([r,bp()+ci,ri])}));
+ res.innerHTML=out.length?out.map(o=>`<div class="sr" data-p="${o[1]}" data-i="${o[2]}"><b>${esc(o[0][0])}</b><i>Page ${o[1]+1}</i><span>${esc(o[0][1])}</span><span>${esc(o[0][2])}</span></div>`).join(''):'<p class="empty">No songs match your search.</p>';res.hidden=false}
+sq.oninput=()=>{clearTimeout(timer);timer=setTimeout(search,150)};
+res.onclick=e=>{const r=e.target.closest('.sr');if(r){res.hidden=true;go(+r.dataset.p,+r.dataset.i)}};
+document.addEventListener('click',e=>{if(!e.target.closest('header'))res.hidden=true});
+function saveC(){try{localStorage.setItem('flip_custom',JSON.stringify(custom))}catch(e){}}
+$('#addb').onclick=()=>{const t=$('#nt').value.trim();if(!t){$('#nt').focus();return}
+ let ci=cur-bp();if(custom[ci].length>=PER){custom.push([]);ci++;cur++}
+ custom[ci].push([t,$('#na').value.trim(),$('#nn').value.trim()]);saveC();hl=custom[ci].length-1;
+ ['#nt','#na','#nn'].forEach(s=>$(s).value='');render(0);$('#nt').focus()};
+$('#newp').onclick=()=>{custom.push([]);saveC();go(tp()-1)};
+const DB=()=>new Promise((ok,no)=>{const q=indexedDB.open('flip',1);q.onupgradeneeded=()=>q.result.createObjectStore('k');q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error)});
+async function idbGet(k){try{const d=await DB();return await new Promise(r=>{const q=d.transaction('k').objectStore('k').get(k);q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)})}catch(e){return null}}
+async function idbSet(k,v){try{const d=await DB();d.transaction('k','readwrite').objectStore('k').put(v,k)}catch(e){}}
+$('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;$('#info').textContent='Reading '+f.name+'…';
+ try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+ let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''});
+ let ti=0,ai=1,ni=2;const h=(rows[0]||[]).map(x=>String(x).toLowerCase());
+ if(h.some(x=>/title|song|artist|singer|number|code/.test(x))){const f1=re=>h.findIndex(x=>re.test(x));
+  if(f1(/title|song/)>-1)ti=f1(/title|song/);if(f1(/artist|singer/)>-1)ai=f1(/artist|singer/);if(f1(/num|no\b|code/)>-1)ni=f1(/num|no\b|code/);rows=rows.slice(1)}
+ rows=rows.filter(r=>String(r[ti]).trim()).map(r=>[String(r[ti]).trim(),String(r[ai]).trim(),String(r[ni]).trim()]);
+ if(!rows.length)throw new Error('No songs found');
+ prep(rows);idbSet('songs',rows);cur=0;hl=-1;fit();render(0)}
+ catch(err){$('#info').textContent='Could not read that file: '+err.message+'. Use columns Title, Artist, Number.'}};
+function sample(){const A=['Love','Heart','Night','Dream','Fire','Rain','Sun','Moon','Road','Home','Time','Star','Wind','Sky','River'],B=['Story','Song','Light','Memory','Dance','Whisper','Promise','Journey','Summer','Angel','Wonder','Feeling'],S=['Ava Cruz','Leo Santos','Mika Reyes','The Wanderers','Nora Lim','Dan Bautista','Skyline'];
+ const r=[['100 Years','Five For Fighting','00100'],['(Everything I Do) I Do It For You','Bryan Adams','00101'],['’Til Tuesday','Demo Artist','00102'],['7 Days','Craig David','00103']];
+ for(let i=0;i<1200;i++)r.push([A[i%15]+' '+B[(i*7)%12]+(i>180?' '+(Math.floor(i/180)):''),S[i%7],String(10000+i*3)]);return r}
+let ed=false,eref=null;const dlg=$('#dlg');
+function arm(btn,label,fn){if(btn.dataset.a){delete btn.dataset.a;btn.textContent=label;fn();return}btn.dataset.a=1;btn.textContent='Tap again to confirm';setTimeout(()=>{if(btn.dataset.a){delete btn.dataset.a;btn.textContent=label}},3000)}
+function closeD(){const b=$('#ed');delete b.dataset.a;b.textContent='Delete song';dlg.hidden=true}
+function rebuild(){const rows=base.map(r=>[r[0],r[1],r[2]]);prep(rows);idbSet('songs',rows)}
+$('#editb').onclick=()=>{ed=!ed;$('#editb').textContent=ed?'Done':'✎ Edit';$('#editb').classList.toggle('pri',ed);pg.classList.toggle('editing',ed);render(0)};
+pg.addEventListener('click',e=>{if(!ed)return;const r=e.target.closest('.r');if(!r)return;const i=+r.dataset.i,b=cur<bp(),rec=b?base[cur*PER+i]:custom[cur-bp()][i];eref={b,i:b?cur*PER+i:i,ci:cur-bp()};$('#et').value=rec[0];$('#ea').value=rec[1];$('#en').value=rec[2];dlg.hidden=false;$('#et').focus()});
+$('#es').onclick=()=>{const t=$('#et').value.trim();if(!t){$('#et').focus();return}const a=$('#ea').value.trim(),n=$('#en').value.trim();
+ if(eref.b){base[eref.i]=[t,a,n];rebuild();const k=base.findIndex(r=>r[0]===t&&r[1]===a&&r[2]===n);cur=Math.max(0,Math.floor(k/PER));hl=k%PER}else{custom[eref.ci][eref.i]=[t,a,n];saveC();hl=eref.i}
+ closeD();render(0)};
+$('#ed').onclick=function(){arm(this,'Delete song',()=>{if(eref.b){base.splice(eref.i,1);rebuild();cur=Math.min(cur,Math.max(0,tp()-1))}else{custom[eref.ci].splice(eref.i,1);saveC()}hl=-1;closeD();render(0)})};
+$('#ec').onclick=closeD;dlg.onclick=e=>{if(e.target===dlg)closeD()};addEventListener('keydown',e=>{if(e.key==='Escape')closeD()});
+$('#delp').onclick=function(){arm(this,'Delete last page',()=>{custom.pop();if(!custom.length)custom=[[]];saveC();cur=Math.min(cur,tp()-1);hl=-1;render(0)})};
+const HOME='https://songhubdownloads.blogspot.com/';
+function chk(){const c=document.getElementById('cr');let ok=false;if(c&&c.textContent.trim()==='HungryMeTutorials'){const s=getComputedStyle(c);ok=c.offsetParent!==null&&s.visibility==='visible'&&parseFloat(s.opacity)>.5&&parseFloat(s.fontSize)>=8}
+ if(!ok){try{document.body.innerHTML=''}catch(e){}try{top.location.replace(HOME)}catch(e){location.replace(HOME)}}return ok}
+setInterval(chk,1500);new MutationObserver(chk).observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true});
+(async()=>{if(!chk())return;try{const c=JSON.parse(localStorage.getItem('flip_custom'));if(Array.isArray(c)&&c.length)custom=c}catch(e){}
+ const s=await idbGet('songs');prep(Array.isArray(s)&&s.length?s:sample());fit();render(0)})();
+</script></body></html>
