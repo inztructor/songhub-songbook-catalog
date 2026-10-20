@@ -59,17 +59,22 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 <script>
 const PER=96,$=s=>document.querySelector(s),col=new Intl.Collator('en',{numeric:true,sensitivity:'base'});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let base=[],idx=[],custom=[[]],cur=0,z=1,hl=-1,gmap={},timer;
+let base=[],basePages=[],basePageGlobal=[],idx=[],custom=[[]],cur=0,z=1,hl=-1,gmap={},timer;
 const pg=$('#pg'),sc=$('#sc'),sel=$('#sel'),res=$('#res'),sq=$('#sq');
 function grp(t){const c=t.trim().charAt(0).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();return /[A-Z]/.test(c)?c:/[0-9]/.test(c)?'0-9':'#'}
 function prep(rows){const rk=g=>g==='#'?0:g==='0-9'?1:2;
- const a=rows.map(r=>[r[0],r[1],r[2],grp(r[0])]);a.sort((x,y)=>rk(x[3])-rk(y[3])||col.compare(x[0],y[0]));
- base=a;idx=a.map(r=>(r[0]+' '+r[1]+' '+r[2]).toLowerCase());gmap={};
- a.forEach((r,i)=>{if(!(r[3] in gmap))gmap[r[3]]=Math.floor(i/PER)});
+ const a=rows.map((r,i)=>[r[0],r[1],r[2],grp(r[0]),i]);a.sort((x,y)=>rk(x[3])-rk(y[3])||col.compare(x[0],y[0]));
+ base=a.map(r=>r.slice(0,4));idx=base.map(r=>(r[0]+' '+r[1]+' '+r[2]).toLowerCase());gmap={};basePages=[];basePageGlobal=[];
+ // Build pages within each group, so symbols, numbers, and each letter never share a page.
+ let start=0;while(start<a.length){const group=a[start][3];if(!(group in gmap))gmap[group]=basePages.length;
+  let end=start;while(end<a.length&&a[end][3]===group)end++;
+  for(let i=start;i<end;i+=PER){basePages.push(base.slice(i,Math.min(i+PER,end)));basePageGlobal.push(Array.from({length:Math.min(PER,end)-i},(_,j)=>i+j));}
+  start=end;
+ }
  const order=['#','0-9',...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].filter(g=>g in gmap);
  sel.innerHTML=order.map(g=>`<option value="${gmap[g]}">${g==='#'?'Symbols':g==='0-9'?'Numbers 0–9':g}</option>`).join('')+'<option value="last">Add songs (last page)</option>';}
-const bp=()=>Math.ceil(base.length/PER),tp=()=>bp()+custom.length;
-const rowsOf=()=>cur<bp()?base.slice(cur*PER,cur*PER+PER):custom[cur-bp()];
+const bp=()=>basePages.length,tp=()=>bp()+custom.length;
+const rowsOf=()=>cur<bp()?basePages[cur]:custom[cur-bp()];
 const bs=()=>innerWidth<760?16:13;
 function zoomApply(){pg.style.fontSize=(bs()*z)+'px';$('#zl').textContent=Math.round(z*100)+'%'}
 function render(dir){const R=rowsOf(),isC=cur>=bp();
@@ -77,7 +82,7 @@ function render(dir){const R=rowsOf(),isC=cur>=bp();
  $('#add').hidden=!isC;$('#pno').value=cur+1;$('#tot').textContent='/ '+tp();
  if(isC)sel.value='last';else if(R[0])sel.value=gmap[R[0][3]];
  $('#prev').disabled=cur===0;$('#next').disabled=cur>=tp()-1;
- $('#info').textContent=base.length.toLocaleString()+' songs · '+bp()+' pages · '+PER+' songs per page'+(custom.some(p=>p.length)?' · '+custom.reduce((n,p)=>n+p.length,0)+' added by you':'');
+ $('#info').textContent=base.length.toLocaleString()+' songs · '+bp()+' pages'+(custom.some(p=>p.length)?' · '+custom.reduce((n,p)=>n+p.length,0)+' added by you':'');
  if(ed)$('#info').textContent='Edit mode: tap any song to change or delete it';
  if(dir){pg.classList.remove('fn','fp');void pg.offsetWidth;pg.classList.add(dir>0?'fn':'fp')}
  zoomApply();const h=pg.querySelector('.hl');if(h)h.scrollIntoView({block:'center'});else sc.scrollTop=0}
@@ -96,7 +101,7 @@ sc.addEventListener('wheel',e=>{if(e.ctrlKey){e.preventDefault();z=Math.max(.3,M
 document.addEventListener('keydown',e=>{if(/INPUT|SELECT/.test(document.activeElement.tagName))return;if(e.key==='ArrowRight')go(cur+1);if(e.key==='ArrowLeft')go(cur-1)});
 function search(){const q=sq.value.trim().toLowerCase();if(!q){res.hidden=true;return}
  const w=q.split(/\s+/),out=[];
- for(let i=0;i<idx.length&&out.length<150;i++)if(w.every(x=>idx[i].includes(x)))out.push([base[i],Math.floor(i/PER),i%PER]);
+ for(let i=0;i<idx.length&&out.length<150;i++)if(w.every(x=>idx[i].includes(x))){let pi=basePageGlobal.findIndex(a=>a.includes(i));if(pi>=0)out.push([base[i],pi,basePageGlobal[pi].indexOf(i)])}
  custom.forEach((p,ci)=>p.forEach((r,ri)=>{if(out.length<200&&w.every(x=>(r[0]+' '+r[1]+' '+r[2]).toLowerCase().includes(x)))out.push([r,bp()+ci,ri])}));
  res.innerHTML=out.length?out.map(o=>`<div class="sr" data-p="${o[1]}" data-i="${o[2]}"><b>${esc(o[0][0])}</b><i>Page ${o[1]+1}</i><span>${esc(o[0][1])}</span><span>${esc(o[0][2])}</span></div>`).join(''):'<p class="empty">No songs match your search.</p>';res.hidden=false}
 sq.oninput=()=>{clearTimeout(timer);timer=setTimeout(search,150)};
@@ -129,9 +134,9 @@ function arm(btn,label,fn){if(btn.dataset.a){delete btn.dataset.a;btn.textConten
 function closeD(){const b=$('#ed');delete b.dataset.a;b.textContent='Delete song';dlg.hidden=true}
 function rebuild(){const rows=base.map(r=>[r[0],r[1],r[2]]);prep(rows);idbSet('songs',rows)}
 $('#editb').onclick=()=>{ed=!ed;$('#editb').textContent=ed?'Done':'✎ Edit';$('#editb').classList.toggle('pri',ed);pg.classList.toggle('editing',ed);render(0)};
-pg.addEventListener('click',e=>{if(!ed)return;const r=e.target.closest('.r');if(!r)return;const i=+r.dataset.i,b=cur<bp(),rec=b?base[cur*PER+i]:custom[cur-bp()][i];eref={b,i:b?cur*PER+i:i,ci:cur-bp()};$('#et').value=rec[0];$('#ea').value=rec[1];$('#en').value=rec[2];dlg.hidden=false;$('#et').focus()});
+pg.addEventListener('click',e=>{if(!ed)return;const r=e.target.closest('.r');if(!r)return;const i=+r.dataset.i,b=cur<bp(),globalI=b?basePageGlobal[cur][i]:i,rec=b?base[globalI]:custom[cur-bp()][i];eref={b,i:b?globalI:i,ci:cur-bp()};$('#et').value=rec[0];$('#ea').value=rec[1];$('#en').value=rec[2];dlg.hidden=false;$('#et').focus()});
 $('#es').onclick=()=>{const t=$('#et').value.trim();if(!t){$('#et').focus();return}const a=$('#ea').value.trim(),n=$('#en').value.trim();
- if(eref.b){base[eref.i]=[t,a,n];rebuild();const k=base.findIndex(r=>r[0]===t&&r[1]===a&&r[2]===n);cur=Math.max(0,Math.floor(k/PER));hl=k%PER}else{custom[eref.ci][eref.i]=[t,a,n];saveC();hl=eref.i}
+ if(eref.b){base[eref.i]=[t,a,n];rebuild();const k=base.findIndex(r=>r[0]===t&&r[1]===a&&r[2]===n);cur=Math.max(0,basePageGlobal.findIndex(a=>a.includes(k)));hl=basePageGlobal[cur].indexOf(k)}else{custom[eref.ci][eref.i]=[t,a,n];saveC();hl=eref.i}
  closeD();render(0)};
 $('#ed').onclick=function(){arm(this,'Delete song',()=>{if(eref.b){base.splice(eref.i,1);rebuild();cur=Math.min(cur,Math.max(0,tp()-1))}else{custom[eref.ci].splice(eref.i,1);saveC()}hl=-1;closeD();render(0)})};
 $('#ec').onclick=closeD;dlg.onclick=e=>{if(e.target===dlg)closeD()};addEventListener('keydown',e=>{if(e.key==='Escape')closeD()});
