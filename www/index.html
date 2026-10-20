@@ -68,7 +68,7 @@ function prep(rows){const rk=g=>g==='#'?0:g==='0-9'?1:2;
  // Build pages within each group, so symbols, numbers, and each letter never share a page.
  let start=0;while(start<a.length){const group=a[start][3];if(!(group in gmap))gmap[group]=basePages.length;
   let end=start;while(end<a.length&&a[end][3]===group)end++;
-  for(let i=start;i<end;i+=PER){basePages.push(base.slice(i,Math.min(i+PER,end)));basePageGlobal.push(Array.from({length:Math.min(PER,end)-i},(_,j)=>i+j));}
+  for(let i=start;i<end;i+=PER){basePages.push(base.slice(i,Math.min(i+PER,end)));basePageGlobal.push(Array.from({length:Math.min(i+PER,end)-i},(_,j)=>i+j));}
   start=end;
  }
  const order=['#','0-9',...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].filter(g=>g in gmap);
